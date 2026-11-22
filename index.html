@@ -96,7 +96,6 @@ async function auth(endpoint) {
     
     if (!res.ok) throw new Error(data.detail || "Ошибка");
     
-    // Успех!
     myNick = username;
     document.getElementById("auth-screen").style.display = "none";
     document.getElementById("app").style.display = "flex";
@@ -110,7 +109,10 @@ function login() { auth("/login"); }
 function register() { auth("/register"); }
 
 function connectWS() {
-  ws = new WebSocket(`ws://${location.host}/ws`);
+  // Автоматически выбираем wss:// для Layero и ws:// для локального ПК
+  const wsProtocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  ws = new WebSocket(`${wsProtocol}${location.host}/ws`);
+  
   ws.onopen = () => ws.send(myNick);
 
   ws.onmessage = e => {
