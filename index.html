@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>DMassanger</title>
   <style>
-    /* --- ПЕРЕМЕННЫЕ И ГЛАССМОРФИЗМ --- */
     :root {
       --primary: #00897b;
       --bg-base: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
@@ -31,7 +30,6 @@
       --hover-bg: rgba(255, 255, 255, 0.05);
     }
 
-    /* --- БАЗА --- */
     * { box-sizing: border-box; }
     body {
       margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -39,7 +37,6 @@
       transition: background 0.3s;
     }
 
-    /* --- ЭФФЕКТ СТЕКЛА --- */
     .glass {
       background: var(--glass-bg);
       backdrop-filter: blur(16px);
@@ -54,14 +51,16 @@
     }
     .logo-big { font-size: 64px; color: var(--primary); font-weight: 300; line-height: 1; margin-bottom: 10px; }
     .title { font-size: 24px; margin-bottom: 25px; font-weight: 600; }
-    .input-group { margin-bottom: 15px; text-align: left; }
-    .input-group label { font-size: 13px; color: var(--text-muted); margin-bottom: 5px; display: block; }
-    .input-group input, .input-group select {
+    
+    .form-group { margin-bottom: 15px; text-align: left; }
+    .form-group label { font-size: 13px; color: var(--text-muted); margin-bottom: 5px; display: block; }
+    .form-group input, .form-group select {
       width: 100%; padding: 12px; border: 1px solid var(--glass-border);
       border-radius: 12px; background: var(--input-bg); color: var(--text-main);
       outline: none; font-size: 15px; transition: border 0.2s;
     }
-    .input-group input:focus { border-color: var(--primary); }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+    
     .btn-primary {
       width: 100%; padding: 12px; background: var(--primary); color: white;
       border: none; border-radius: 12px; cursor: pointer; font-size: 16px;
@@ -73,7 +72,6 @@
 
     /* --- ИНТЕРФЕЙС --- */
     #app { display: none; width: 100%; height: 100%; padding: 15px; gap: 15px; }
-
     .sidebar {
       width: 320px; border-radius: 24px; display: flex; flex-direction: column;
       overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.05);
@@ -88,18 +86,23 @@
     .user-item.active { background: var(--primary); color: white; }
     .user-item.active .avatar { background: rgba(255,255,255,0.2) !important; }
 
-    .sidebar-footer { padding: 15px; border-top: 1px solid var(--glass-border); }
-    .btn-settings {
-      width: 100%; padding: 12px; background: var(--input-bg); color: var(--text-main);
-      border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer;
-      font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: background 0.2s;
+    .sidebar-footer { padding: 15px; border-top: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 10px; }
+    .btn-settings, .btn-logout {
+      width: 100%; padding: 12px; border: 1px solid var(--glass-border); border-radius: 12px; 
+      cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s; background: var(--input-bg); color: var(--text-main);
     }
     .btn-settings:hover { background: var(--hover-bg); }
+    .btn-logout { color: #ef4444; border-color: #ef4444; background: transparent; }
+    .btn-logout:hover { background: rgba(239, 68, 68, 0.1); }
 
     /* --- АВАТАРКИ --- */
     .avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; text-transform: uppercase; flex-shrink: 0; }
     .avatar-sm { width: 32px; height: 32px; font-size: 14px; }
+    
+    /* Стили для системного аккаунта */
+    .avatar.system { background: var(--input-bg) !important; color: var(--text-main) !important; border: 1px solid var(--glass-border); }
+    .avatar.system span { font-size: 16px; }
 
     /* --- ЧАТ --- */
     .chat-area {
@@ -126,21 +129,11 @@
     }
     @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    .msg-row.my .message {
-      background: var(--my-msg); color: white; border-bottom-right-radius: 4px;
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    .msg-row.other .message {
-      background: var(--other-msg); color: var(--text-main); border-bottom-left-radius: 4px;
-      border: 1px solid var(--glass-border);
-    }
-
+    .msg-row.my .message { background: var(--my-msg); color: white; border-bottom-right-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+    .msg-row.other .message { background: var(--other-msg); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--glass-border); }
+    
     .message img { max-width: 100%; max-height: 300px; border-radius: 12px; cursor: pointer; object-fit: cover; margin-top: 5px; display: block; }
-
-    .delete-btn {
-      cursor: pointer; opacity: 0; font-size: 12px; position: absolute; bottom: 5px; right: 5px;
-      transition: opacity 0.2s; padding: 4px;
-    }
+    .delete-btn { cursor: pointer; opacity: 0; font-size: 12px; position: absolute; bottom: 5px; right: 5px; transition: opacity 0.2s; padding: 4px; }
     .msg-row:hover .delete-btn { opacity: 0.7; }
     .msg-row.my .delete-btn { color: white; }
     .delete-btn:hover { opacity: 1; }
@@ -151,32 +144,15 @@
       align-items: center; gap: 10px; background: var(--glass-bg);
       backdrop-filter: blur(16px); z-index: 2;
     }
-    .icon-btn {
-      background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted);
-      transition: color 0.2s; display: flex; align-items: center; justify-content: center;
-      width: 40px; height: 40px; border-radius: 50%;
-    }
+    .icon-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; }
     .icon-btn:hover { color: var(--primary); background: var(--input-bg); }
-    .input-area input[type="text"] {
-      flex: 1; padding: 12px 18px; border: 1px solid transparent; border-radius: 20px;
-      background: var(--input-bg); color: var(--text-main); font-size: 15px;
-      outline: none; transition: border 0.2s;
-    }
+    .input-area input[type="text"] { flex: 1; padding: 12px 18px; border: 1px solid transparent; border-radius: 20px; background: var(--input-bg); color: var(--text-main); font-size: 15px; outline: none; transition: border 0.2s; }
     .input-area input[type="text"]:focus { border-color: var(--glass-border); }
-    .input-area button.btn-send {
-      background: var(--primary); color: white; border: none; border-radius: 50%;
-      width: 42px; height: 42px; cursor: pointer; font-size: 18px;
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.1s, box-shadow 0.2s;
-    }
+    .input-area button.btn-send { background: var(--primary); color: white; border: none; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.2s; }
     .input-area button.btn-send:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,137,123,0.3); }
 
     /* --- СТИКЕРЫ (ЭМОДЗИ) --- */
-    .emoji-panel {
-      position: absolute; bottom: 85px; right: 20px; border-radius: 16px; padding: 15px;
-      display: none; grid-template-columns: repeat(6, 1fr); gap: 10px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 5;
-    }
+    .emoji-panel { position: absolute; bottom: 85px; right: 20px; border-radius: 16px; padding: 15px; display: none; grid-template-columns: repeat(6, 1fr); gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 5; }
     .emoji-panel.show { display: grid; }
     .emoji-btn { background: none; border: none; font-size: 24px; cursor: pointer; padding: 5px; border-radius: 8px; transition: background 0.2s; }
     .emoji-btn:hover { background: var(--input-bg); }
@@ -195,16 +171,32 @@
 
 <!-- ЭКРАН ВХОДА -->
 <div id="auth-screen" class="glass">
-  <div class="logo-big">д</div>
+  <div class="logo-big">d</div>
   <div class="title">DMassanger</div>
-
-  <div class="input-group">
+  
+  <div class="form-group">
     <label>Имя пользователя</label>
     <input id="username" placeholder="Введите логин">
   </div>
-  <div class="input-group">
+  <div class="form-group">
     <label>Пароль</label>
     <input id="password" type="password" placeholder="Введите пароль">
+  </div>
+
+  <div class="form-group">
+    <label>Язык / Language</label>
+    <select id="auth-lang">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Тема / Theme</label>
+    <select id="auth-theme">
+      <option value="light">Светлая / Light</option>
+      <option value="dark">Тёмная / Dark</option>
+    </select>
   </div>
 
   <button class="btn-primary" onclick="login()">Войти</button>
@@ -216,24 +208,24 @@
 <div id="app">
   <div class="sidebar glass">
     <div class="sidebar-header">
-      <div class="logo-small">д</div>
+      <div class="logo-small">d</div>
       <div class="sidebar-title" id="sidebar-title-text">Чаты</div>
     </div>
     <div class="user-list" id="userList"></div>
     <div class="sidebar-footer">
       <button class="btn-settings" onclick="openSettings()">⚙️ <span id="settings-text">Настройки</span></button>
+      <button class="btn-logout" onclick="logout()">🚪 <span id="logout-text">Выйти</span></button>
     </div>
   </div>
-
+  
   <div class="chat-area glass">
     <div class="chat-header">
       <div class="avatar" id="header-avatar"></div>
       <span id="header-name">Выберите чат</span>
     </div>
-
+    
     <div id="chat-box"></div>
-
-    <!-- Панель эмодзи -->
+    
     <div class="emoji-panel glass" id="emojiPanel">
       <button class="emoji-btn" onclick="addEmoji('😀')">😀</button>
       <button class="emoji-btn" onclick="addEmoji('😂')">😂</button>
@@ -253,7 +245,7 @@
       <button class="icon-btn" onclick="toggleEmoji()">😊</button>
       <label class="icon-btn" for="file-input" style="cursor:pointer;">📎</label>
       <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="uploadFile()">
-
+      
       <input type="text" id="msg" placeholder="Сообщение..." autofocus>
       <button class="btn-send" onclick="send()">➤</button>
     </div>
@@ -264,8 +256,8 @@
 <div class="modal-overlay" id="settingsModal">
   <div class="modal glass">
     <h3>Настройки</h3>
-
-    <div class="input-group">
+    
+    <div class="form-group">
       <label>Язык / Language</label>
       <select id="settings-lang" onchange="changeLang(this.value)">
         <option value="ru">Русский</option>
@@ -273,7 +265,7 @@
       </select>
     </div>
 
-    <div class="input-group">
+    <div class="form-group">
       <label>Тема / Theme</label>
       <select id="settings-theme" onchange="changeTheme(this.value)">
         <option value="light">Светлая / Light</option>
@@ -281,7 +273,7 @@
       </select>
     </div>
 
-    <div class="input-group">
+    <div class="form-group">
       <label>Обои / Wallpaper</label>
       <select id="settings-wallpaper" onchange="changeWallpaper(this.value)">
         <option value="solid">Однотонные / Solid</option>
@@ -305,17 +297,19 @@ const chatBox = document.getElementById("chat-box");
 const inp = document.getElementById("msg");
 
 const translations = {
-  ru: { chats: "Чаты", choose: "Выберите чат", settings: "Настройки", close: "Закрыть" },
-  en: { chats: "Chats", choose: "Select a chat", settings: "Settings", close: "Close" }
+  ru: { chats: "Чаты", choose: "Выберите чат", settings: "Настройки", logout: "Выйти", close: "Закрыть", msg: "Сообщение..." },
+  en: { chats: "Chats", choose: "Select a chat", settings: "Settings", logout: "Log out", close: "Close", msg: "Message..." }
 };
 
+// --- ПРИМЕНЕНИЕ НАСТРОЕК ---
 function applyLanguage(lang) {
   currentLang = lang;
   document.getElementById("sidebar-title-text").textContent = translations[lang].chats;
   document.getElementById("settings-text").textContent = translations[lang].settings;
+  document.getElementById("logout-text").textContent = translations[lang].logout;
   if(!currentChat) document.getElementById("header-name").textContent = translations[lang].choose;
   document.querySelector(".btn-close").textContent = translations[lang].close;
-  inp.placeholder = lang === 'ru' ? "Сообщение..." : "Message...";
+  inp.placeholder = translations[lang].msg;
 }
 
 function applyTheme(theme) {
@@ -328,26 +322,16 @@ function applyWallpaper(wall) {
   document.body.classList.toggle('wallpaper-pattern', wall === 'pattern');
 }
 
-function getAvatarColor(name) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const colors = ['#00897b', '#1e88e5', '#8e24aa', '#d81b60', '#e53935', '#fb8c00', '#43a047', '#546e7a'];
-  return colors[Math.abs(hash) % colors.length];
-}
-
-function createAvatar(name, sizeClass = "") {
-  const div = document.createElement("div");
-  div.className = `avatar ${sizeClass}`;
-  div.textContent = name.charAt(0);
-  div.style.backgroundColor = getAvatarColor(name);
-  return div;
-}
+// --- ЛОГИКА ВХОДА И СОХРАНЕНИЯ ---
+document.getElementById("auth-theme").addEventListener("change", (e) => applyTheme(e.target.value));
 
 async function auth(endpoint) {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
+  const lang = document.getElementById("auth-lang").value;
+  const theme = document.getElementById("auth-theme").value;
+  
   document.getElementById("auth-error").textContent = "";
-
   if (!username || !password) return document.getElementById("auth-error").textContent = "Заполните все поля!";
 
   try {
@@ -358,11 +342,13 @@ async function auth(endpoint) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Ошибка");
-
-    myNick = username;
-    document.getElementById("auth-screen").style.display = "none";
-    document.getElementById("app").style.display = "flex";
-    connectWS();
+    
+    // Сохраняем данные в localStorage
+    localStorage.setItem("dm_user", username);
+    localStorage.setItem("dm_lang", lang);
+    localStorage.setItem("dm_theme", theme);
+    
+    startSession(username, lang, theme);
   } catch (err) {
     document.getElementById("auth-error").textContent = err.message;
   }
@@ -371,6 +357,39 @@ async function auth(endpoint) {
 function login() { auth("/login"); }
 function register() { auth("/register"); }
 
+function startSession(username, lang, theme) {
+  myNick = username;
+  applyLanguage(lang);
+  applyTheme(theme);
+  
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  connectWS();
+}
+
+function logout() {
+  localStorage.removeItem("dm_user");
+  localStorage.removeItem("dm_lang");
+  localStorage.removeItem("dm_theme");
+  location.reload(); // Перезагружаем страницу, чтобы вернуться к экрану входа
+}
+
+// --- ПРОВЕРКА АВТОВХОДА ПРИ ЗАГРУЗКЕ ---
+window.onload = () => {
+  const savedUser = localStorage.getItem("dm_user");
+  const savedLang = localStorage.getItem("dm_lang") || 'ru';
+  const savedTheme = localStorage.getItem("dm_theme") || 'light';
+  
+  // Применяем тему сразу, чтобы не было вспышки
+  document.getElementById("auth-theme").value = savedTheme;
+  applyTheme(savedTheme);
+
+  if (savedUser) {
+    startSession(savedUser, savedLang, savedTheme);
+  }
+};
+
+// --- WEBSOCKET ---
 function connectWS() {
   const wsProtocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   ws = new WebSocket(`${wsProtocol}${location.host}/ws`);
@@ -390,9 +409,8 @@ function connectWS() {
         const text = parts.slice(4, parts.length - 1).join(":");
         const id = parts[parts.length - 1];
         const from = parts[2];
-
-        // ФИКС БАГА: Игнорируем свои же сообщения, пришедшие от сервера
-        if (from === myNick) return;
+        
+        if (from === myNick) return; // ФИКС ДВОЙНЫХ СООБЩЕНИЙ
 
         if (to === currentChat || (from === currentChat && to === myNick)) {
           addMessage(from, text, id, false);
@@ -404,18 +422,34 @@ function connectWS() {
 
 function updateUserList(users) {
   const list = document.getElementById("userList");
-  list.innerHTML = users.length === 0 ? '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Нет пользователей онлайн</div>' : '';
+  list.innerHTML = "";
+  
+  // Добавляем системный аккаунт notifications
+  const sysDiv = document.createElement("div");
+  sysDiv.className = "user-item";
+  sysDiv.id = "chat-notifications";
+  
+  const sysAvatar = document.createElement("div");
+  sysAvatar.className = "avatar avatar-sm system";
+  sysAvatar.innerHTML = "🔔";
+  
+  const sysName = document.createElement("span");
+  sysName.textContent = "notifications";
+  
+  sysDiv.appendChild(sysAvatar);
+  sysDiv.appendChild(sysName);
+  sysDiv.onclick = function() { selectChat("notifications", this); };
+  list.appendChild(sysDiv);
 
+  // Добавляем обычных пользователей
   users.forEach(user => {
     const div = document.createElement("div");
     div.className = "user-item";
     div.id = `chat-${user}`;
     div.appendChild(createAvatar(user, "avatar-sm"));
-
     const nameSpan = document.createElement("span");
     nameSpan.textContent = user;
     div.appendChild(nameSpan);
-
     div.onclick = function() { selectChat(user, this); };
     list.appendChild(div);
   });
@@ -423,38 +457,44 @@ function updateUserList(users) {
 
 function selectChat(target, element) {
   currentChat = target;
-
   const headerAvatar = document.getElementById("header-avatar");
   headerAvatar.style.display = "flex";
-  headerAvatar.textContent = target.charAt(0);
-  headerAvatar.style.backgroundColor = getAvatarColor(target);
-  document.getElementById("header-name").textContent = target;
-
+  
+  if (target === "notifications") {
+    headerAvatar.textContent = "🔔";
+    headerAvatar.style.backgroundColor = "var(--input-bg)";
+    headerAvatar.style.color = "var(--text-main)";
+    document.getElementById("header-name").textContent = "Уведомления";
+  } else {
+    headerAvatar.textContent = target.charAt(0);
+    headerAvatar.style.backgroundColor = getAvatarColor(target);
+    headerAvatar.style.color = "white";
+    document.getElementById("header-name").textContent = target;
+  }
+  
   document.querySelectorAll(".user-item").forEach(el => el.classList.remove("active"));
   element.classList.add("active");
   chatBox.innerHTML = "";
 }
 
+// --- ОТПРАВКА ---
 function send() {
   if (!currentChat) return alert("Выберите собеседника!");
-  if (!inp.value.trim()) return;
-
+  if (!inp.value.trim() || currentChat === "notifications") return; // Запрет писать боту
+  
   const id = Date.now().toString();
   ws.send(`${currentChat}|${inp.value}|${id}`);
-
-  // Рисуем сообщение у себя СРАЗУ
   addMessage(myNick, inp.value, id, true);
   inp.value = "";
 }
 
 async function uploadFile() {
-  if (!currentChat) {
+  if (!currentChat || currentChat === "notifications") {
     alert("Выберите собеседника!");
     document.getElementById("file-input").value = "";
     return;
   }
-  const fileInput = document.getElementById("file-input");
-  const file = fileInput.files[0];
+  const file = document.getElementById("file-input").files[0];
   if (!file) return;
 
   const formData = new FormData();
@@ -464,7 +504,6 @@ async function uploadFile() {
     const res = await fetch("/upload", { method: "POST", body: formData });
     if (!res.ok) throw new Error("Ошибка загрузки");
     const data = await res.json();
-
     const id = Date.now().toString();
     const msgText = `IMG:${data.url}`;
     ws.send(`${currentChat}|${msgText}|${id}`);
@@ -472,20 +511,40 @@ async function uploadFile() {
   } catch (err) {
     alert("Ошибка: " + err.message);
   } finally {
-    fileInput.value = "";
+    document.getElementById("file-input").value = ""; 
   }
+}
+
+// --- ОТРИСОВКА ---
+function getAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const colors = ['#00897b', '#1e88e5', '#8e24aa', '#d81b60', '#e53935', '#fb8c00', '#43a047', '#546e7a'];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function createAvatar(name, sizeClass = "") {
+  const div = document.createElement("div");
+  div.className = `avatar ${sizeClass}`;
+  if (name === "notifications") {
+    div.classList.add("system");
+    div.textContent = "🔔";
+  } else {
+    div.textContent = name.charAt(0);
+    div.style.backgroundColor = getAvatarColor(name);
+  }
+  return div;
 }
 
 function addMessage(from, text, id, isMe) {
   const row = document.createElement("div");
   row.className = `msg-row ${isMe ? 'my' : 'other'}`;
   row.id = `msg-${id}`;
-
   if (!isMe) row.appendChild(createAvatar(from, "avatar-sm"));
 
   const bubble = document.createElement("div");
   bubble.className = "message";
-
+  
   if (text.startsWith("IMG:")) {
     const imgUrl = text.replace("IMG:", "");
     const img = document.createElement("img");
@@ -495,7 +554,7 @@ function addMessage(from, text, id, isMe) {
   } else {
     bubble.textContent = text;
   }
-
+  
   if (isMe) {
     const delBtn = document.createElement("span");
     delBtn.className = "delete-btn";
@@ -503,21 +562,14 @@ function addMessage(from, text, id, isMe) {
     delBtn.onclick = () => { if (confirm("Удалить сообщение?")) ws.send(`DELETE:${id}`); };
     bubble.appendChild(delBtn);
   }
-
+  
   row.appendChild(bubble);
   chatBox.appendChild(row);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-function toggleEmoji() {
-  document.getElementById("emojiPanel").classList.toggle("show");
-}
-
-function addEmoji(emoji) {
-  inp.value += emoji;
-  inp.focus();
-  document.getElementById("emojiPanel").classList.remove("show");
-}
+function toggleEmoji() { document.getElementById("emojiPanel").classList.toggle("show"); }
+function addEmoji(emoji) { inp.value += emoji; inp.focus(); document.getElementById("emojiPanel").classList.remove("show"); }
 
 function openSettings() {
   document.getElementById("settings-lang").value = currentLang;
@@ -525,13 +577,9 @@ function openSettings() {
   document.getElementById("settings-wallpaper").value = currentWallpaper;
   document.getElementById("settingsModal").classList.add("show");
 }
-
-function closeSettings() {
-  document.getElementById("settingsModal").classList.remove("show");
-}
-
-function changeLang(val) { applyLanguage(val); }
-function changeTheme(val) { applyTheme(val); }
+function closeSettings() { document.getElementById("settingsModal").classList.remove("show"); }
+function changeLang(val) { applyLanguage(val); localStorage.setItem("dm_lang", val); }
+function changeTheme(val) { applyTheme(val); localStorage.setItem("dm_theme", val); }
 function changeWallpaper(val) { applyWallpaper(val); }
 
 inp.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
