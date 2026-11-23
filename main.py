@@ -1,11 +1,12 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from passlib.context import CryptContext
 from typing import Dict
-import json
+import os
+import uuid
 
 # --- НАСТРОЙКА БАЗЫ ДАННЫХ ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./messenger.db"
@@ -13,27 +14,27 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Таблица пользователей
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
 
-# Таблица сообщений (пока сохраняем только общий чат для истории)
 class Message(Base):
     __tablename__ = "messages"
     id = Column(String, primary_key=True, index=True)
     sender = Column(String)
     receiver = Column(String)
-    text = Column(Text)
+    text = Column(Text) # Здесь может быть текст или ссылка на картинку
 
 Base.metadata.create_all(bind=engine)
 
-# Настройка шифрования паролей
+# Создаем папку для картинок
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# --- FASTAPI ---
 app = FastAPI()
 connections: Dict[WebSocket, str] = {}
 
@@ -65,6 +66,24 @@ def login(user: UserAuth):
         raise HTTPException(status_code=400, detail="Неверное имя или пароль")
     return {"message": "Вход выполнен"}
 
+# --- ЗАГРУЗКА ФАЙЛОВ ---
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    # Генерируем уникальное имя файла, чтобы они не перезаписывали друг друга
+    file_ext = file.filename.split(".")[-1]
+    file_name = f"{uuid.uuid4()}.{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+    
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+    
+    return {"url": f"/uploads/{file_name}"}
+
+@app.get("/uploads/{filename}")
+async def get_file(filename: str):
+    return FileResponse(os.path.join(UPLOAD_DIR, filename))
+
+# --- ОСНОВНОЕ ПРИЛОЖЕНИЕ ---
 @app.get("/")
 async def index():
     with open("index.html", "r", encoding="utf-8") as f:
@@ -73,21 +92,18 @@ async def index():
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
-    
-    # Первое сообщение — имя пользователя (после успешного логина)
     nick = await ws.receive_text()
     connections[ws] = nick
     
-    # Отправляем список онлайн
     await ws.send_text(f"SYSTEM_LIST:{','.join(connections.values())}")
     
-    # Загружаем историю сообщений из базы (последние 50)
     db = SessionLocal()
     history = db.query(Message).order_by(Message.id.desc()).limit(50).all()
     db.close()
     
     for msg in reversed(history):
-        await ws.send_text(f"MSG:{msg.receiver == 'ALL' and 'public' or 'private'}:{msg.sender}:{msg.receiver}:{msg.text}:{msg.id}")
+        msg_type = "private" if msg.receiver != "ALL" else "public"
+        await ws.send_text(f"MSG:{msg_type}:{msg.sender}:{msg.receiver}:{msg.text}:{msg.id}")
 
     await broadcast(f"SYSTEM:{nick} зашел в чат")
     await broadcast_users()
@@ -109,7 +125,6 @@ async def ws_endpoint(ws: WebSocket):
             if len(parts) == 3:
                 to_user, text, msg_id = parts
                 
-                # Сохраняем в базу
                 db = SessionLocal()
                 new_msg = Message(id=msg_id, sender=nick, receiver=to_user, text=text)
                 db.add(new_msg)
