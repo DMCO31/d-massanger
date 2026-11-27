@@ -462,4 +462,114 @@ async function uploadFile() {
     if (!allMessages[currentChat]) allMessages[currentChat] = [];
     allMessages[currentChat].push({ id, from: myNick, text: msgText, isMe: true });
   } catch (err) { alert("Ошибка: " + err.message); }
-  finally { document.getElementById("file-input").value = ""
+  finally { document.getElementById("file-input").value = ""; }
+}
+
+function getAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const colors = ['#00897b', '#1e88e5', '#8e24aa', '#d81b60', '#e53935', '#fb8c00', '#43a047', '#546e7a'];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function createAvatar(name, sizeClass = "") {
+  const div = document.createElement("div");
+  div.className = `avatar ${sizeClass}`;
+  if (name === "notifications") { div.classList.add("system"); div.textContent = "🔔"; }
+  else { div.textContent = name.charAt(0); div.style.backgroundColor = getAvatarColor(name); }
+  return div;
+}
+
+function addMessage(from, text, id, isMe) {
+  const row = document.createElement("div");
+  row.className = `msg-row ${isMe ? 'my' : 'other'}`;
+  row.id = `msg-${id}`;
+  if (!isMe) row.appendChild(createAvatar(from, "avatar-sm"));
+  const bubble = document.createElement("div");
+  bubble.className = "message";
+  
+  if (text.startsWith("STICKER:")) {
+    const sticker = document.createElement("span");
+    sticker.className = "sticker";
+    sticker.textContent = text.replace("STICKER:", "");
+    bubble.appendChild(sticker);
+  } else if (text.startsWith("FILE:")) {
+    const img = document.createElement("img");
+    img.src = text.replace("FILE:", "");
+    img.onclick = () => window.open(img.src, "_blank");
+    bubble.appendChild(img);
+  } else {
+    const textSpan = document.createElement("span");
+    textSpan.className = "text-content";
+    textSpan.textContent = text;
+    bubble.appendChild(textSpan);
+    
+    if (isMe) {
+      const actions = document.createElement("div");
+      actions.className = "msg-actions";
+      const editBtn = document.createElement("button");
+      editBtn.className = "action-btn";
+      editBtn.textContent = "✏️";
+      editBtn.onclick = () => {
+        const newText = prompt("Редактировать сообщение:", text);
+        if (newText !== null && newText.trim() !== "") ws.send(`EDIT:${id}:${newText}`);
+      };
+      const delBtn = document.createElement("button");
+      delBtn.className = "action-btn";
+      delBtn.textContent = "🗑️";
+      delBtn.onclick = () => { if (confirm("Удалить?")) ws.send(`DELETE:${id}`); };
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      bubble.appendChild(actions);
+    }
+  }
+  row.appendChild(bubble);
+  chatBox.appendChild(row);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function toggleConsole() {
+  const consoleEl = document.getElementById("dev-console");
+  consoleEl.classList.toggle("show");
+  if (consoleEl.classList.contains("show")) document.getElementById("dev-input").focus();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.shiftKey && e.code === "KeyD") { e.preventDefault(); toggleConsole(); }
+});
+
+async function handleDevCommand(event) {
+  if (event.key !== "Enter") return;
+  const input = document.getElementById("dev-input");
+  const output = document.getElementById("dev-output");
+  const cmd = input.value.trim();
+  input.value = "";
+  if (!cmd) return;
+  
+  if (adminPassword === null) {
+    adminPassword = cmd;
+    output.innerHTML += `Попытка входа с паролем...\n`;
+    return;
+  }
+  
+  output.innerHTML += `> ${cmd}\n`;
+  try {
+    const res = await fetch("/admin/command", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: adminPassword, command: cmd })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.detail === "Неверный пароль администратора") { adminPassword = null; output.innerHTML += `ОШИБКА: Неверный пароль.\n`; }
+      else output.innerHTML += `ОШИБКА: ${data.detail}\n`;
+    } else {
+      output.innerHTML += `${data.result}\n`;
+    }
+  } catch (err) { output.innerHTML += `ОШИБКА СЕТИ: ${err.message}\n`; }
+  output.scrollTop = output.scrollHeight;
+}
+
+inp.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+</script>
+</body>
+</html>
