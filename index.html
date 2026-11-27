@@ -101,6 +101,16 @@
     .sticker-btn { background: none; border: none; font-size: 32px; cursor: pointer; padding: 5px; border-radius: 8px; transition: background 0.2s; }
     .sticker-btn:hover { background: var(--input-bg); }
 
+    /* КОНСОЛЬ РАЗРАБОТЧИКА */
+    #dev-console { position: fixed; bottom: 20px; right: 20px; width: 450px; height: 350px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); border: 1px solid #333; border-radius: 12px; color: #00ff00; font-family: 'Courier New', monospace; font-size: 13px; display: none; flex-direction: column; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    #dev-console.show { display: flex; }
+    .dev-header { padding: 10px 15px; background: #111; border-bottom: 1px solid #333; display: flex; justify-content: space-between; color: #888; }
+    .dev-header span { cursor: pointer; }
+    .dev-output { flex: 1; padding: 10px; overflow-y: auto; white-space: pre-wrap; }
+    .dev-input-area { display: flex; border-top: 1px solid #333; }
+    .dev-input-area span { padding: 10px; color: #888; }
+    .dev-input-area input { flex: 1; background: transparent; border: none; color: #00ff00; font-family: inherit; font-size: inherit; outline: none; padding: 10px; }
+
     /* МОБИЛЬНАЯ ВЕРСИЯ */
     @media (max-width: 768px) {
       .main-content { padding: 0; padding-bottom: 80px; gap: 0; }
@@ -220,6 +230,13 @@
   </div>
 </div>
 
+<!-- КОНСОЛЬ РАЗРАБОТЧИКА -->
+<div id="dev-console">
+  <div class="dev-header"><span>d чат Admin Console</span><span onclick="toggleConsole()">✕</span></div>
+  <div class="dev-output" id="dev-output">Введите пароль для доступа...\n</div>
+  <div class="dev-input-area"><span>></span><input type="text" id="dev-input" onkeydown="handleDevCommand(event)" placeholder="Введите команду..."></div>
+</div>
+
 <script>
 let ws;
 let myNick = "";
@@ -227,7 +244,7 @@ let currentChat = null;
 let currentLang = 'ru';
 let currentTheme = 'light';
 let currentWallpaper = 'solid';
-let allMessages = {}; 
+let allMessages = {};
 let groups = [];
 let typingTimer;
 
@@ -379,10 +396,6 @@ function connectWS() {
       const newText = parts.slice(2).join(":");
       const el = document.querySelector(`#msg-${msgId} .text-content`);
       if (el) el.textContent = newText;
-      if (allMessages[currentChat]) {
-        const m = allMessages[currentChat].find(x => x.id === msgId);
-        if (m) { m.text = newText; m.isEdited = true; }
-      }
     } else if (data.startsWith("DELETE_MSG:")) {
       const msgId = data.split(":")[1];
       document.getElementById(`msg-${msgId}`)?.remove();
@@ -393,8 +406,8 @@ function connectWS() {
         const id = parts[parts.length - 2]; const isGroupMsg = parts[parts.length - 1] === "True";
         
         if (from === myNick) return;
-        
         const chatPartner = isGroupMsg ? to : from;
+        
         if (!allMessages[chatPartner]) allMessages[chatPartner] = [];
         allMessages[chatPartner].push({ id, from, text, isMe: false });
         
@@ -408,14 +421,12 @@ function updateUserList(usersList = null) {
   const list = document.getElementById("userList");
   list.innerHTML = "";
   
-  // Бот
   const sysDiv = document.createElement("div");
   sysDiv.className = "user-item";
   sysDiv.innerHTML = `<div class="avatar avatar-sm system">🔔</div><span>notifications</span>`;
   sysDiv.onclick = () => openChat("notifications");
   list.appendChild(sysDiv);
 
-  // Группы
   groups.forEach(grp => {
     const div = document.createElement("div");
     div.className = "user-item";
@@ -424,7 +435,6 @@ function updateUserList(usersList = null) {
     list.appendChild(div);
   });
 
-  // Люди
   if (usersList) {
     usersList.forEach(user => {
       const div = document.createElement("div");
@@ -457,39 +467,4 @@ function sendSticker(sticker) {
   if (!currentChat || currentChat === "notifications") return;
   const id = Date.now().toString();
   ws.send(`${currentChat}|STICKER:${sticker}|${id}`);
-  addMessage(myNick, `STICKER:${sticker}`, id, true);
-  if (!allMessages[currentChat]) allMessages[currentChat] = [];
-  allMessages[currentChat].push({ id, from: myNick, text: `STICKER:${sticker}`, isMe: true });
-  toggleStickers();
-}
-
-async function uploadFile() {
-  if (!currentChat || currentChat === "notifications") return;
-  const file = document.getElementById("file-input").files[0];
-  if (!file) return;
-  const formData = new FormData();
-  formData.append("file", file);
-  try {
-    const res = await fetch("/upload", { method: "POST", body: formData });
-    const data = await res.json();
-    const id = Date.now().toString();
-    const msgText = `FILE:${data.url}`;
-    ws.send(`${currentChat}|${msgText}|${id}`);
-    addMessage(myNick, msgText, id, true);
-    if (!allMessages[currentChat]) allMessages[currentChat] = [];
-    allMessages[currentChat].push({ id, from: myNick, text: msgText, isMe: true });
-  } catch (err) { alert("Ошибка: " + err.message); }
-  finally { document.getElementById("file-input").value = ""; }
-}
-
-// --- УТИЛИТЫ ---
-function getAvatarColor(name) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const colors = ['#00897b', '#1e88e5', '#8e24aa', '#d81b60', '#e53935', '#fb8c00', '#43a047', '#546e7a'];
-  return colors[Math.abs(hash) % colors.length];
-}
-
-function createAvatar(name, sizeClass = "") {
-  const div = document.createElement("div");
-  div.className = `avatar ${sizeClass
+  add
