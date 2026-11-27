@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
 from passlib.context import CryptContext
-from typing import Dict, List
-import os, uuid, time, json
+from typing import Dict
+import os, uuid, time
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./messenger.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -37,7 +37,7 @@ class Message(Base):
     __tablename__ = "messages"
     id = Column(String, primary_key=True, index=True)
     sender = Column(String)
-    receiver = Column(String) # username или group_id
+    receiver = Column(String)
     text = Column(Text)
     is_group = Column(Boolean, default=False)
 
@@ -168,6 +168,67 @@ async def index():
     with open("index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
+@app.post("/admin/command")
+def admin_command(cmd: AdminCommand):
+    if cmd.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=403, detail="Неверный пароль администратора")
+    
+    db = SessionLocal()
+    parts = cmd.command.strip().split(" ", 1)
+    action = parts[0].lower()
+    
+    if action == "ban" and len(parts) > 1:
+        target = parts[1]
+        user = db.query(User).filter(User.username == target).first()
+        if user:
+            user.is_banned = 1
+            db.commit()
+            result = f"Пользователь {target} забанен."
+        else:
+            result = f"Пользователь {target} не найден."
+            
+    elif action == "unban" and len(parts) > 1:
+        target = parts[1]
+        user = db.query(User).filter(User.username == target).first()
+        if user:
+            user.is_banned = 0
+            db.commit()
+            result = f"Пользователь {target} разбанен."
+        else:
+            result = f"Пользователь {target} не найден."
+            
+    elif action == "users":
+        users = db.query(User).all()
+        result = "Список пользователей:\n" + "\n".join([f"{u.username} {'[BANNED]' if u.is_banned else ''}" for u in users])
+        
+    elif action == "online":
+        result = "Онлайн: " + ", ".join(connections.values())
+        
+    elif action == "clear":
+        db.query(Message).delete()
+        db.commit()
+        result = "Все сообщения удалены."
+        
+    elif action == "broadcast" and len(parts) > 1:
+        text = parts[1]
+        users = db.query(User).all()
+        count = 0
+        for u in users:
+            if u.username == "notifications": continue
+            new_msg = Message(id=str(time.time()) + str(u.id), sender="notifications", receiver=u.username, text=text)
+            db.add(new_msg)
+            count += 1
+        db.commit()
+        result = f"Сообщение отправлено {count} пользователям."
+        
+    elif action == "help":
+        result = "Команды:\nban <username>\nunban <username>\nusers\nonline\nclear\nbroadcast <текст>"
+    else:
+        result = "Неизвестная команда. Введите help."
+        
+    db.close()
+    return {"result": result}
+
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
@@ -183,7 +244,6 @@ async def ws_endpoint(ws: WebSocket):
     connections[ws] = nick
     await broadcast_users()
     
-    # История для пользователя
     db = SessionLocal()
     groups = db.query(GroupMember.group_id).filter(GroupMember.username == nick).all()
     group_ids = [g[0] for g in groups]
@@ -202,7 +262,6 @@ async def ws_endpoint(ws: WebSocket):
         while True:
             data = await ws.receive_text()
             
-            # Статус "печатает"
             if data.startswith("TYPING:"):
                 chat_to = data.split(":")[1]
                 for c_ws, c_nick in list(connections.items()):
@@ -210,7 +269,6 @@ async def ws_endpoint(ws: WebSocket):
                         await c_ws.send_text(f"TYPING:{nick}")
                 continue
 
-            # Редактирование
             if data.startswith("EDIT:"):
                 _, msg_id, new_text = data.split(":", 2)
                 db = SessionLocal()
@@ -240,7 +298,6 @@ async def ws_endpoint(ws: WebSocket):
                 db.add(Message(id=msg_id, sender=nick, receiver=to_user, text=text, is_group=is_group))
                 db.commit()
                 
-                # Кому отправить
                 if is_group:
                     members = db.query(GroupMember.username).filter(GroupMember.group_id == to_user).all()
                     member_names = [m[0] for m in members]
