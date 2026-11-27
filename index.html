@@ -451,4 +451,167 @@ function updateUserList(usersList = null) {
 
   if (usersList) {
     usersList.forEach(user => {
-      const div = document.createElement
+      const div = document.createElement("div");
+      div.className = "user-item";
+      div.appendChild(createAvatar(user, "avatar-sm"));
+      div.innerHTML += `<span>${user}</span>`;
+      div.onclick = () => openChat(user);
+      list.appendChild(div);
+    });
+  }
+}
+
+function sendTyping() {
+  if (!currentChat || currentChat === "notifications") return;
+  ws.send(`TYPING:${currentChat}`);
+}
+
+function send() {
+  if (!currentChat || !inp.value.trim() || currentChat === "notifications") return;
+  const id = Date.now().toString();
+  ws.send(`${currentChat}|${inp.value}|${id}`);
+  addMessage(myNick, inp.value, id, true);
+  if (!allMessages[currentChat]) allMessages[currentChat] = [];
+  allMessages[currentChat].push({ id, from: myNick, text: inp.value, isMe: true });
+  inp.value = "";
+}
+
+function sendSticker(sticker) {
+  if (!currentChat || currentChat === "notifications") return;
+  const id = Date.now().toString();
+  ws.send(`${currentChat}|STICKER:${sticker}|${id}`);
+  addMessage(myNick, `STICKER:${sticker}`, id, true);
+  if (!allMessages[currentChat]) allMessages[currentChat] = [];
+  allMessages[currentChat].push({ id, from: myNick, text: `STICKER:${sticker}`, isMe: true });
+  toggleStickers();
+}
+
+function toggleStickers() { document.getElementById("stickerPanel").classList.toggle("show"); }
+
+async function uploadFile() {
+  if (!currentChat || currentChat === "notifications") return;
+  const file = document.getElementById("file-input").files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const res = await fetch("/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    const id = Date.now().toString();
+    const msgText = `FILE:${data.url}`;
+    ws.send(`${currentChat}|${msgText}|${id}`);
+    addMessage(myNick, msgText, id, true);
+    if (!allMessages[currentChat]) allMessages[currentChat] = [];
+    allMessages[currentChat].push({ id, from: myNick, text: msgText, isMe: true });
+  } catch (err) { alert("Ошибка: " + err.message); }
+  finally { document.getElementById("file-input").value = ""; }
+}
+
+function getAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const colors = ['#00897b', '#1e88e5', '#8e24aa', '#d81b60', '#e53935', '#fb8c00', '#43a047', '#546e7a'];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function createAvatar(name, sizeClass = "") {
+  const div = document.createElement("div");
+  div.className = `avatar ${sizeClass}`;
+  if (name === "notifications") { div.classList.add("system"); div.textContent = "🔔"; }
+  else { div.textContent = name.charAt(0); div.style.backgroundColor = getAvatarColor(name); }
+  return div;
+}
+
+function addMessage(from, text, id, isMe) {
+  const row = document.createElement("div");
+  row.className = `msg-row ${isMe ? 'my' : 'other'}`;
+  row.id = `msg-${id}`;
+  if (!isMe) row.appendChild(createAvatar(from, "avatar-sm"));
+  const bubble = document.createElement("div");
+  bubble.className = "message";
+  
+  if (text.startsWith("STICKER:")) {
+    const sticker = document.createElement("span");
+    sticker.className = "sticker";
+    sticker.textContent = text.replace("STICKER:", "");
+    bubble.appendChild(sticker);
+  } else if (text.startsWith("FILE:")) {
+    const img = document.createElement("img");
+    img.src = text.replace("FILE:", "");
+    img.onclick = () => window.open(img.src, "_blank");
+    bubble.appendChild(img);
+  } else {
+    const textSpan = document.createElement("span");
+    textSpan.className = "text-content";
+    textSpan.textContent = text;
+    bubble.appendChild(textSpan);
+    
+    if (isMe) {
+      const actions = document.createElement("div");
+      actions.className = "msg-actions";
+      const editBtn = document.createElement("button");
+      editBtn.className = "action-btn";
+      editBtn.textContent = "✏️";
+      editBtn.onclick = () => {
+        const newText = prompt("Редактировать сообщение:", text);
+        if (newText !== null && newText.trim() !== "") ws.send(`EDIT:${id}:${newText}`);
+      };
+      const delBtn = document.createElement("button");
+      delBtn.className = "action-btn";
+      delBtn.textContent = "🗑️";
+      delBtn.onclick = () => { if (confirm("Удалить?")) ws.send(`DELETE:${id}`); };
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      bubble.appendChild(actions);
+    }
+  }
+  row.appendChild(bubble);
+  chatBox.appendChild(row);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function toggleConsole() {
+  const consoleEl = document.getElementById("dev-console");
+  consoleEl.classList.toggle("show");
+  if (consoleEl.classList.contains("show")) document.getElementById("dev-input").focus();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.shiftKey && e.code === "KeyD") { e.preventDefault(); toggleConsole(); }
+});
+
+async function handleDevCommand(event) {
+  if (event.key !== "Enter") return;
+  const input = document.getElementById("dev-input");
+  const output = document.getElementById("dev-output");
+  const cmd = input.value.trim();
+  input.value = "";
+  if (!cmd) return;
+  
+  if (adminPassword === null) {
+    adminPassword = cmd;
+    output.innerHTML += `Попытка входа с паролем...\n`;
+    return;
+  }
+  
+  output.innerHTML += `> ${cmd}\n`;
+  try {
+    const res = await fetch("/admin/command", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: adminPassword, command: cmd })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.detail === "Неверный пароль администратора") { adminPassword = null; output.innerHTML += `ОШИБКА: Неверный пароль.\n`; }
+      else output.innerHTML += `ОШИБКА: ${data.detail}\n`;
+    } else {
+      output.innerHTML += `${data.result}\n`;
+    }
+  } catch (err) { output.innerHTML += `ОШИБКА СЕТИ: ${err.message}\n`; }
+  output.scrollTop = output.scrollHeight;
+}
+
+inp.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+</script>
+</body>
+</html>
